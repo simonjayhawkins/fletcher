@@ -1,5 +1,6 @@
 import math
 import string
+import sys
 from typing import Optional, Sequence, Tuple
 
 import hypothesis.strategies as st
@@ -26,15 +27,27 @@ except ImportError:
 def supported_by_utf8proc(s):
     """Check a string whether all characters are supported by utf8proc."""
     # See https://github.com/JuliaStrings/utf8proc/pull/196
-    return len(set("ªᶛº¹²³").intersection(s)) == 0
+    return len(set("'\U0002ceb0\U00018af4ªᶛº¹²³").intersection(s)) == 0
 
 
 def supported_by_python(s):
     """Check a string whether all characters are supported by Python."""
-    if set("\U00030000\U00018af3").intersection(s):
+    if sys.version_info < (3, 7):
+        # Needs unicode 10
+        if any(ord(c) > 110592 for c in s):
+            return False
+        if any(ord(c) >= 69632 and ord(c) <= 73727 for c in s):
+            return False
+        if set("🄰").intersection(s):
+            return False
+    if sys.version_info < (3, 8):
+        if any(ord(c) > 183983 for c in s):
+            # Needs Unicode 12+
+            return False
+    # Probably needs unicode 13, check with Python 3.9 in unicodedata.unidata_version
+    if set("\U00018af5\U00018af4\U00018af3").intersection(s):
         return False
     if any(ord(c) > 196607 for c in s):
-        # Probably needs unicode 13, check with Python 3.9 in unicodedata.unidata_version
         return False
     return True
 
